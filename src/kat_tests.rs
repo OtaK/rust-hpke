@@ -3,7 +3,7 @@ use crate::{
     kdf::{HkdfSha256, HkdfSha384, HkdfSha512, Kdf as KdfTrait},
     kem::{
         self, DhP256HkdfSha256, DhP384HkdfSha384, DhP521HkdfSha512, Kem as KemTrait, SharedSecret,
-        X25519HkdfSha256,
+        X25519HkdfSha256, X448HkdfSha512,
     },
     op_mode::{OpModeR, PskBundle},
     setup::setup_receiver,
@@ -46,6 +46,21 @@ impl TestableKem for X25519HkdfSha256 {
         kem::x25519_hkdfsha256::encap_with_eph(pk_recip, sender_id_keypair, sk_eph)
     }
 }
+
+impl TestableKem for X448HkdfSha512 {
+    // In DHKEM, ephemeral keys and private keys are both scalars
+    type EphemeralKey = <X448HkdfSha512 as KemTrait>::PrivateKey;
+
+    // Call the x25519 deterministic encap function we defined in dhkem.rs
+    fn encap_with_eph(
+        pk_recip: &Self::PublicKey,
+        sender_id_keypair: Option<(&Self::PrivateKey, &Self::PublicKey)>,
+        sk_eph: Self::EphemeralKey,
+    ) -> Result<(SharedSecret<Self>, Self::EncappedKey), HpkeError> {
+        kem::x448_hkdfsha512::encap_with_eph(pk_recip, sender_id_keypair, sk_eph)
+    }
+}
+
 impl TestableKem for DhP256HkdfSha256 {
     // In DHKEM, ephemeral keys and private keys are both scalars
     type EphemeralKey = <DhP256HkdfSha256 as KemTrait>::PrivateKey;
@@ -377,9 +392,10 @@ fn kat_test() {
     let tvs: Vec<MainTestVector> = serde_json::from_reader(file).unwrap();
 
     for tv in tvs.into_iter() {
-        // Ignore everything that doesn't use X25519, P256, P384 or P521, since that's all we support
+        // Ignore everything that doesn't use X25519, X448, P256, P384 or P521, since that's all we support
         // right now
         if tv.kem_id != X25519HkdfSha256::KEM_ID
+            && tv.kem_id != X448HkdfSha512::KEM_ID
             && tv.kem_id != DhP256HkdfSha256::KEM_ID
             && tv.kem_id != DhP384HkdfSha384::KEM_ID
             && tv.kem_id != DhP521HkdfSha512::KEM_ID
@@ -394,6 +410,7 @@ fn kat_test() {
             (HkdfSha256, HkdfSha384, HkdfSha512),
             (
                 X25519HkdfSha256,
+                X448HkdfSha512,
                 DhP256HkdfSha256,
                 DhP384HkdfSha384,
                 DhP521HkdfSha512

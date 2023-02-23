@@ -100,6 +100,7 @@ pub(crate) use alloc::vec::Vec;
     test,
     feature = "std",
     feature = "x25519",
+    feature = "x448",
     feature = "p256",
     feature = "p384",
     feature = "p521"
